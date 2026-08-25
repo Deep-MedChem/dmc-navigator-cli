@@ -1,3 +1,4 @@
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from dmc_navigator.cli import app
@@ -19,6 +20,8 @@ def test_search_requires_one_input(monkeypatch) -> None:
 
 
 def test_token_is_not_a_command_argument() -> None:
-    result = runner.invoke(app, ["auth", "login", "--help"])
-    assert "--token-stdin" in result.output
-    assert "--token " not in result.output
+    root = get_command(app)
+    login = root.commands["auth"].commands["login"]
+    option_names = {name for param in login.params for name in param.opts}
+    assert "--token-stdin" in option_names
+    assert "--token" not in option_names
