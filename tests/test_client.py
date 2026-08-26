@@ -11,6 +11,7 @@ def test_search_is_thin_post_wrapper() -> None:
         captured["path"] = request.url.path
         captured["body"] = request.read()
         captured["token"] = request.headers["x-api-key"]
+        captured["client"] = request.headers["x-dmc-client"]
         return httpx.Response(200, json={"results": []})
 
     client = NavigatorClient(
@@ -32,4 +33,5 @@ def test_search_is_thin_post_wrapper() -> None:
     assert captured["method"] == "POST"
     assert captured["path"] == "/api/v2/search"
     assert captured["token"] == "scoped-token"
+    assert captured["client"] == "navigator-cli"
     assert b'"query_smiles":"CCO"' in captured["body"]
