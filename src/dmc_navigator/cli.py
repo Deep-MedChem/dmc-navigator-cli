@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 
 from . import __version__
+from .auth import LoginError, browser_login
 from .client import NavigatorClient, NavigatorError, read_smiles
 from .config import delete_token, get_token, load_config, save_api_url, save_token
 
@@ -35,7 +36,7 @@ def client() -> NavigatorClient:
     token = get_token()
     if not token:
         raise typer.BadParameter(
-            "Not authenticated. Run 'navigator auth login --token-stdin' or set "
+            "Not authenticated. Run 'navigator auth login' or set "
             "DMC_NAVIGATOR_TOKEN."
         )
     config = load_config()
@@ -54,22 +55,47 @@ def root(
 @auth_app.command("login")
 def auth_login(
     token_stdin: Annotated[
-        bool, typer.Option("--token-stdin", help="Read a scoped token from stdin.")
+        bool, typer.Option("--token-stdin", help="Read an API key from stdin (automation).")
     ] = False,
+    no_browser: Annotated[
+        bool, typer.Option("--no-browser", help="Print the approval URL without opening it.")
+    ] = False,
+    timeout: Annotated[
+        int, typer.Option(min=30, max=1800, help="Browser login timeout in seconds.")
+    ] = 600,
 ):
-    if not token_stdin:
-        raise typer.BadParameter("MVP login requires --token-stdin; browser/device login is next.")
-    token = sys.stdin.read().strip()
-    if not token:
-        raise typer.BadParameter("stdin did not contain a token")
+    if token_stdin:
+        token = sys.stdin.read().strip()
+        if not token:
+            raise typer.BadParameter("stdin did not contain an API key")
+    else:
+        config = load_config()
+        typer.echo("Opening CHEESE to approve Navigator login…")
+        def show_approval(user_code: str, verification_url: str) -> None:
+            typer.echo(f"Approval code: {user_code}")
+            typer.echo(f"Approval URL: {verification_url}")
+
+        try:
+            token, _, _ = browser_login(
+                config.web_url,
+                open_browser=not no_browser,
+                timeout=timeout,
+                on_started=show_approval,
+            )
+        except LoginError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
     save_token(token)
-    typer.echo("Authenticated token saved in the OS credential store.")
+    typer.echo("Authenticated. CHEESE API key saved in the OS credential store.")
 
 
 @auth_app.command("status")
 def auth_status(json_output: Annotated[bool, typer.Option("--json")] = False):
     config = load_config()
-    emit({"authenticated": bool(get_token()), "api_url": config.api_url}, json_output)
+    emit(
+        {"authenticated": bool(get_token()), "api_url": config.api_url, "web_url": config.web_url},
+        json_output,
+    )
 
 
 @auth_app.command("logout")
