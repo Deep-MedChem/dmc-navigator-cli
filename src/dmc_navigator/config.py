@@ -11,11 +11,13 @@ from platformdirs import user_config_path
 SERVICE = "dmc-navigator"
 ACCOUNT = "platform-token"
 DEFAULT_API_URL = "https://cheese-new-api.deepmedchem.com"
+DEFAULT_WEB_URL = "https://cheese-new.deepmedchem.com"
 
 
 @dataclass(frozen=True)
 class Config:
     api_url: str = DEFAULT_API_URL
+    web_url: str = DEFAULT_WEB_URL
 
 
 def config_path() -> Path:
@@ -26,14 +28,19 @@ def load_config() -> Config:
     path = config_path()
     payload = json.loads(path.read_text()) if path.is_file() else {}
     api_url = os.environ.get("DMC_NAVIGATOR_API_URL", payload.get("api_url", DEFAULT_API_URL))
-    return Config(api_url=api_url)
+    web_url = os.environ.get("DMC_NAVIGATOR_WEB_URL", payload.get("web_url", DEFAULT_WEB_URL))
+    return Config(api_url=api_url.rstrip("/"), web_url=web_url.rstrip("/"))
 
 
 def save_api_url(value: str) -> None:
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"api_url": value.rstrip("/")}, indent=2) + "\n")
+    existing = load_config()
+    temporary.write_text(
+        json.dumps({"api_url": value.rstrip("/"), "web_url": existing.web_url}, indent=2)
+        + "\n"
+    )
     os.chmod(temporary, 0o600)
     temporary.replace(path)
 

@@ -7,7 +7,7 @@ The Python distribution name is `dmc-navigator` and the command is `navigator`.
 
 ```bash
 pipx install dmc-navigator
-printf '%s' "$DMC_PLATFORM_TOKEN" | navigator auth login --token-stdin
+navigator auth login
 navigator doctor
 navigator search --smiles 'CCO' --scorer shape --quality balanced
 ```
@@ -15,5 +15,11 @@ navigator search --smiles 'CCO' --scorer shape --quality balanced
 Before the PyPI trusted-publisher gate is approved, attested source/wheel artifacts are
 also attached to each GitHub release and can be installed directly with `pipx`.
 
-The MVP uses a scoped platform token read from stdin or `DMC_NAVIGATOR_TOKEN`. Browser PKCE
-and device-code login will replace token bootstrap when the identity endpoints are ready.
+`navigator auth login` opens CHEESE in a browser. Sign in (or create an account), choose an
+existing shared CHEESE API key or let CHEESE create one, and approve the one-time login. The CLI
+stores the returned key in the operating-system credential store. It never receives your CHEESE
+password or browser session.
+
+For headless automation, pipe a CHEESE API key to `navigator auth login --token-stdin` or provide
+`DMC_NAVIGATOR_TOKEN`. API access and search entitlements come from the CHEESE account and key;
+Navigator does not introduce a separate license key format.

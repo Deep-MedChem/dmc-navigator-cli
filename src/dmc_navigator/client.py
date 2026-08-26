@@ -5,6 +5,8 @@ from pathlib import Path
 
 import httpx
 
+from . import __version__
+
 
 class NavigatorError(RuntimeError):
     pass
@@ -14,7 +16,11 @@ class NavigatorClient:
     def __init__(self, api_url: str, token: str, *, transport=None):
         self._client = httpx.Client(
             base_url=api_url.rstrip("/"),
-            headers={"x-api-key": token, "user-agent": "dmc-navigator/0.1.0"},
+            headers={
+                "x-api-key": token,
+                "x-dmc-client": "navigator-cli",
+                "user-agent": f"dmc-navigator/{__version__}",
+            },
             timeout=45.0,
             transport=transport,
         )
