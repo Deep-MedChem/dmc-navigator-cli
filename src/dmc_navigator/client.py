@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -52,18 +53,29 @@ class NavigatorClient:
         shortlist_multiplier: int,
         limit: int,
         include_synthons: bool,
+        property_preset: str | None = None,
+        property_constraints: dict[str, dict[str, float]] | None = None,
+        exact_property_postfilter: bool = True,
+        admet_acquisition: list[dict[str, Any]] | None = None,
     ) -> dict:
+        payload: dict[str, Any] = {
+            "query_smiles": smiles,
+            "database_id": database,
+            "scorer": scorer,
+            "shortlist_multiplier": shortlist_multiplier,
+            "limit": limit,
+            "include_synthons": include_synthons,
+        }
+        if property_preset or property_constraints:
+            payload["property_preset"] = property_preset
+            payload["property_constraints"] = property_constraints or {}
+            payload["exact_property_postfilter"] = bool(exact_property_postfilter)
+        if admet_acquisition:
+            payload["admet_acquisition"] = admet_acquisition
         return self._request(
             "POST",
             "/api/v2/search",
-            json={
-                "query_smiles": smiles,
-                "database_id": database,
-                "scorer": scorer,
-                "shortlist_multiplier": shortlist_multiplier,
-                "limit": limit,
-                "include_synthons": include_synthons,
-            },
+            json=payload,
         )
 
 

@@ -36,6 +36,26 @@ def test_search_uses_shortlist_multiplier_instead_of_quality() -> None:
     assert multiplier.default == 10
 
 
+def test_property_window_validation(monkeypatch) -> None:
+    monkeypatch.setenv("DMC_NAVIGATOR_TOKEN", "test")
+    result = runner.invoke(
+        app,
+        ["search", "--smiles", "CCO", "--property", "MolWt:500:400"],
+    )
+    assert result.exit_code == 2
+    assert "Contradictory" in result.output
+
+
+def test_admet_acquisition_validation(monkeypatch) -> None:
+    monkeypatch.setenv("DMC_NAVIGATOR_TOKEN", "test")
+    result = runner.invoke(
+        app,
+        ["search", "--smiles", "CCO", "--admet-acquisition", "herg:minimize:1.5"],
+    )
+    assert result.exit_code == 2
+    assert "KEEP_FRACTION" in result.output
+
+
 def test_login_uses_browser_flow_and_saves_key(monkeypatch) -> None:
     saved = []
 
