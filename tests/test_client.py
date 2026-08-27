@@ -22,7 +22,7 @@ def test_search_is_thin_post_wrapper() -> None:
             "CCO",
             database="enamine-real-v5a",
             scorer="shape",
-            quality="balanced",
+            shortlist_multiplier=10,
             limit=100,
             include_synthons=False,
         )
@@ -35,3 +35,5 @@ def test_search_is_thin_post_wrapper() -> None:
     assert captured["token"] == "scoped-token"
     assert captured["client"] == "navigator-cli"
     assert b'"query_smiles":"CCO"' in captured["body"]
+    assert b'"shortlist_multiplier":10' in captured["body"]
+    assert b'"quality"' not in captured["body"]

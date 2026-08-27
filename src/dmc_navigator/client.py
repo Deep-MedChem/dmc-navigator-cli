@@ -49,7 +49,7 @@ class NavigatorClient:
         *,
         database: str,
         scorer: str,
-        quality: str,
+        shortlist_multiplier: int,
         limit: int,
         include_synthons: bool,
     ) -> dict:
@@ -60,7 +60,7 @@ class NavigatorClient:
                 "query_smiles": smiles,
                 "database_id": database,
                 "scorer": scorer,
-                "quality": quality,
+                "shortlist_multiplier": shortlist_multiplier,
                 "limit": limit,
                 "include_synthons": include_synthons,
             },

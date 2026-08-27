@@ -152,8 +152,15 @@ def search(
     input_file: Annotated[Path | None, typer.Option("--input", exists=True, dir_okay=False)] = None,
     database: Annotated[str, typer.Option()] = "enamine-real-v5a",
     scorer: Annotated[str, typer.Option()] = "shape",
-    quality: Annotated[str, typer.Option()] = "balanced",
     limit: Annotated[int, typer.Option(min=1, max=200)] = 100,
+    shortlist_multiplier: Annotated[
+        int,
+        typer.Option(
+            min=1,
+            max=200,
+            help="Morgan proposals per requested neighbor (default 10, the Fast setting).",
+        ),
+    ] = 10,
     include_synthons: Annotated[bool, typer.Option()] = False,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ):
@@ -161,8 +168,6 @@ def search(
         raise typer.BadParameter("Provide exactly one of --smiles or --input.")
     if scorer not in {"shape", "esp", "morgan"}:
         raise typer.BadParameter("--scorer must be shape, esp, or morgan")
-    if quality not in {"fast", "balanced", "quality"}:
-        raise typer.BadParameter("--quality must be fast, balanced, or quality")
     queries = [smiles] if smiles else list(read_smiles(input_file))
     api = client()
     try:
@@ -171,7 +176,7 @@ def search(
                 value,
                 database=database,
                 scorer=scorer,
-                quality=quality,
+                shortlist_multiplier=shortlist_multiplier,
                 limit=limit,
                 include_synthons=include_synthons,
             )
