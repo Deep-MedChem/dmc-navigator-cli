@@ -10,7 +10,26 @@ pipx install dmc-navigator
 navigator auth login
 navigator doctor
 navigator search --smiles 'CCO' --scorer shape
+
+# Preset plus a tighter custom window; either side of MIN:MAX may be blank.
+navigator search --smiles 'CCO' --scorer morgan \
+  --property-preset lipinski-ro5 \
+  --property 'MolWt::450' --property 'MolLogP:-1:4'
+
+# Keep the lowest-scoring half under the pinned distilled hERG teacher before
+# product assembly. The endpoint IDs available for a release are in `navigator catalog`.
+navigator search --smiles 'CCO' --scorer shape \
+  --admet-acquisition 'openadmet-herg-pchembl:minimize:0.5'
 ```
+
+Property requests are applied by the platform as a fast synthon-additive prefilter and,
+by default, recalculated exactly on assembled hits. Use
+`--no-exact-property-postfilter` only when approximate boundary leakage is acceptable.
+
+`--admet-acquisition` is explicitly a fast, teacher-distilled rank-quantile acquisition
+step. It is not a safety claim or an authoritative ADMET filter. Repaired/out-of-domain
+synthons are retained rather than silently pruned, and exact assembled-product rescoring
+is still required for any reported endpoint value.
 
 Before the PyPI trusted-publisher gate is approved, attested source/wheel artifacts are
 also attached to each GitHub release and can be installed directly with `pipx`.

@@ -146,6 +146,61 @@ def catalog(json_output: Annotated[bool, typer.Option("--json")] = False):
         api.close()
 
 
+def _parse_property_args(values: list[str]) -> dict[str, dict[str, float]]:
+    """Parse repeatable DESCRIPTOR:MIN:MAX search windows."""
+
+    parsed: dict[str, dict[str, float]] = {}
+    for raw in values:
+        parts = raw.split(":")
+        if len(parts) != 3 or not parts[0].strip():
+            raise typer.BadParameter(
+                f"Invalid --property {raw!r}; expected DESCRIPTOR:MIN:MAX."
+            )
+        descriptor, lower, upper = (part.strip() for part in parts)
+        if not lower and not upper:
+            raise typer.BadParameter(f"Invalid --property {raw!r}; provide a bound.")
+        try:
+            incoming = {
+                **({"min": float(lower)} if lower else {}),
+                **({"max": float(upper)} if upper else {}),
+            }
+        except ValueError as error:
+            raise typer.BadParameter(f"Invalid numeric bound in --property {raw!r}.") from error
+        current = parsed.setdefault(descriptor, {})
+        if "min" in incoming:
+            current["min"] = max(current.get("min", float("-inf")), incoming["min"])
+        if "max" in incoming:
+            current["max"] = min(current.get("max", float("inf")), incoming["max"])
+        if current.get("min", float("-inf")) > current.get("max", float("inf")):
+            raise typer.BadParameter(f"Contradictory --property bounds for {descriptor!r}.")
+    return parsed
+
+
+def _parse_admet_acquisition(values: list[str]) -> list[dict[str, object]]:
+    """Parse repeatable ENDPOINT:DIRECTION:KEEP_FRACTION acquisition requests."""
+
+    parsed: list[dict[str, object]] = []
+    for raw in values:
+        try:
+            endpoint, direction, fraction_text = (part.strip() for part in raw.split(":"))
+            fraction = float(fraction_text)
+        except ValueError as error:
+            raise typer.BadParameter(
+                f"Invalid --admet-acquisition {raw!r}; expected "
+                "ENDPOINT:minimize|maximize:KEEP_FRACTION."
+            ) from error
+        if not endpoint or direction not in {"minimize", "maximize"} or not 0 < fraction <= 1:
+            raise typer.BadParameter(
+                f"Invalid --admet-acquisition {raw!r}; KEEP_FRACTION must be in (0, 1]."
+            )
+        parsed.append(
+            {"endpoint": endpoint, "direction": direction, "keep_fraction": fraction}
+        )
+    if len(parsed) > 4:
+        raise typer.BadParameter("At most four --admet-acquisition objectives are supported.")
+    return parsed
+
+
 @app.command()
 def search(
     smiles: Annotated[str | None, typer.Option(help="One query SMILES.")] = None,
@@ -162,12 +217,43 @@ def search(
         ),
     ] = 10,
     include_synthons: Annotated[bool, typer.Option()] = False,
+    property_preset: Annotated[
+        str | None,
+        typer.Option(help="Property preset: lipinski-ro5 or navigator-druglike-v1."),
+    ] = None,
+    property: Annotated[
+        list[str] | None,
+        typer.Option("--property", help="DESCRIPTOR:MIN:MAX; repeat for multiple windows."),
+    ] = None,
+    exact_property_postfilter: Annotated[
+        bool,
+        typer.Option(
+            "--exact-property-postfilter/--no-exact-property-postfilter",
+            help="Verify requested descriptor bounds on assembled products.",
+        ),
+    ] = True,
+    admet_acquisition: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--admet-acquisition",
+            help=(
+                "Approximate CP16 acquisition ENDPOINT:DIRECTION:KEEP_FRACTION; repeat up "
+                "to four times. This is not an authoritative safety filter."
+            ),
+        ),
+    ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ):
     if bool(smiles) == bool(input_file):
         raise typer.BadParameter("Provide exactly one of --smiles or --input.")
     if scorer not in {"shape", "esp", "morgan"}:
         raise typer.BadParameter("--scorer must be shape, esp, or morgan")
+    if property_preset not in {None, "lipinski-ro5", "navigator-druglike-v1"}:
+        raise typer.BadParameter(
+            "--property-preset must be lipinski-ro5 or navigator-druglike-v1"
+        )
+    property_constraints = _parse_property_args(property or [])
+    admet_objectives = _parse_admet_acquisition(admet_acquisition or [])
     queries = [smiles] if smiles else list(read_smiles(input_file))
     api = client()
     try:
@@ -179,6 +265,10 @@ def search(
                 shortlist_multiplier=shortlist_multiplier,
                 limit=limit,
                 include_synthons=include_synthons,
+                property_preset=property_preset,
+                property_constraints=property_constraints,
+                exact_property_postfilter=exact_property_postfilter,
+                admet_acquisition=admet_objectives,
             )
             for value in queries
         ]
