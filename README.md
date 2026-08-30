@@ -1,49 +1,71 @@
-# DMC Navigator CLI
+# DMC Navigator Python client and CLI
 
-Thin API-first client for DMC's synthon-native search platform. The base package contains
-no RDKit, model, database, or proprietary optimization code.
-
-The Python distribution name is `dmc-navigator` and the command is `navigator`.
+The supported API-first client for DeepMedChem's hosted chemical-space platform. The package is
+chemistry-thin: it contains no RDKit, models, databases, or proprietary search implementation.
 
 ```bash
 pipx install dmc-navigator
 navigator auth login
-navigator doctor
-navigator search --smiles 'CCO' --scorer shape
-
-# Preset plus a tighter custom window; either side of MIN:MAX may be blank.
-navigator search --smiles 'CCO' --scorer morgan \
-  --property-preset lipinski-ro5 \
-  --property 'MolWt::450' --property 'MolLogP:-1:4'
-
-# Keep the lowest-scoring half under the pinned distilled hERG teacher before
-# product assembly. The endpoint IDs available for a release are in `navigator catalog`.
-navigator search --smiles 'CCO' --scorer shape \
-  --admet-acquisition 'openadmet-herg-pchembl:minimize:0.5'
+navigator search --smiles 'CCO'
+navigator search-cheese --smiles 'CCO' --scorer shape
+navigator search-substructure --query 'C(=O)N1CCC1' --query-format smarts
+navigator sample --database enamine-real-v5a --count 100 --seed 12345
 ```
 
-Property requests are applied by the platform as a fast synthon-additive prefilter and,
-by default, recalculated exactly on assembled hits. Use
-`--no-exact-property-postfilter` only when approximate boundary leakage is acceptable.
+A file containing more than one molecule always creates one visible durable `selection_batch` run;
+the CLI never loops over synchronous searches:
 
-`--admet-acquisition` is explicitly a fast, teacher-distilled rank-quantile acquisition
-step. It is not a safety claim or an authoritative ADMET filter. Repaired/out-of-domain
-synthons are retained rather than silently pruned, and exact assembled-product rescoring
-is still required for any reported endpoint value.
+```bash
+navigator search --input leads.smi --limit 10 --json
+navigator run watch run_01K...
+navigator run results run_01K...
+```
 
-Before the PyPI trusted-publisher gate is approved, attested source/wheel artifacts are
-also attached to each GitHub release and can be installed directly with `pipx`.
+The Python API exposes the same operations:
 
-`navigator auth login` opens CHEESE in a browser. Sign in (or create an account), choose an
-existing shared CHEESE API key or let CHEESE create one, and approve the one-time login. The CLI
-stores the returned key in the operating-system credential store. It never receives your CHEESE
-password or browser session.
+```python
+from dmc_navigator import DMCClient
 
-For headless automation, pipe a CHEESE API key to `navigator auth login --token-stdin` or provide
-`DMC_NAVIGATOR_TOKEN`. API access and search entitlements come from the CHEESE account and key;
-Navigator does not introduce a separate license key format.
+with DMCClient(api_key="...") as dmc:
+    neighbors = dmc.search("CCO", database="enamine-real-v5a", limit=20)
+    shape_hits = dmc.search_cheese(
+        "CCO", database="enamine-real-v5a", scorer="shape", limit=20
+    )
+    motif_hits = dmc.search_substructure(
+        "C(=O)N1CCC1", query_format="smarts", database="enamine-real-v5a"
+    )
+    molecules = dmc.sample(database="enamine-real-v5a", count=100, seed=12345)
+```
 
-Search defaults to the Fast operating point: ten Morgan-OR proposals are assembled and
-reranked for every requested neighbor, so the default 100-neighbor request uses a shortlist
-of 1,000. API users can change that ratio explicitly with `--shortlist-multiplier`; for
-example, `--limit 100 --shortlist-multiplier 20` reranks 2,000 proposals.
+Composable selections use a copy-on-write builder that emits the exact public
+`molecule-selection/1` document and performs no local chemistry:
+
+```python
+from dmc_navigator import DMCClient, Run, Selection
+
+selection = (
+    Selection.from_database("enamine-real-v5a")
+    .sample(distribution="route_product_tuple", seed=42)
+    .require_preset("lipinski-ro5/v1")
+    .limit(1_000)
+    .include("properties", "constraint_evidence", "execution_plan")
+)
+
+with DMCClient(api_key="...") as dmc:
+    validation = dmc.selections.validate(selection)
+    estimate = dmc.selections.estimate(validation.normalized_selection)
+    if estimate.execution_tier == "synchronous":
+        result = dmc.selections.create(estimate.normalized_selection)
+    else:
+        run = dmc.runs.create(
+            Run.selection(estimate.normalized_selection),
+            idempotency_key="lipinski-sample-2026-08-v1",
+        )
+```
+
+`AsyncDMCClient` provides matching async methods and async result/event iterators.
+`NavigatorClient` remains as a deprecated compatibility facade for the 0.3 release.
+
+Authentication is read from the constructor, `DMC_API_KEY`, `DMC_NAVIGATOR_TOKEN`, or the OS
+credential store populated by `navigator auth login`. Credentials are never included in exception
+messages. The canonical documentation is at <https://docs.deepmedchem.com/docs/python/quickstart>.
