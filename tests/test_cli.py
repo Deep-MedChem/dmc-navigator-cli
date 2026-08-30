@@ -9,7 +9,7 @@ runner = CliRunner()
 def test_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == "0.2.0"
+    assert result.stdout.strip() == "0.3.0"
 
 
 def test_search_requires_one_input(monkeypatch) -> None:
@@ -32,28 +32,41 @@ def test_search_uses_shortlist_multiplier_instead_of_quality() -> None:
     option_names = {name for param in search.params for name in param.opts}
     assert "--shortlist-multiplier" in option_names
     assert "--quality" not in option_names
+    assert "--scorer" not in option_names
     multiplier = next(param for param in search.params if "--shortlist-multiplier" in param.opts)
     assert multiplier.default == 10
 
 
-def test_property_window_validation(monkeypatch) -> None:
-    monkeypatch.setenv("DMC_NAVIGATOR_TOKEN", "test")
-    result = runner.invoke(
-        app,
-        ["search", "--smiles", "CCO", "--property", "MolWt:500:400"],
-    )
-    assert result.exit_code == 2
-    assert "Contradictory" in result.output
+def test_distinct_scientific_commands_exist() -> None:
+    commands = get_command(app).commands
+    assert "search-cheese" in commands
+    assert "search-substructure" in commands
+    assert "sample" in commands
+    assert set(commands["run"].commands) >= {
+        "estimate",
+        "create",
+        "status",
+        "watch",
+        "results",
+        "cancel",
+    }
 
 
-def test_admet_acquisition_validation(monkeypatch) -> None:
-    monkeypatch.setenv("DMC_NAVIGATOR_TOKEN", "test")
-    result = runner.invoke(
-        app,
-        ["search", "--smiles", "CCO", "--admet-acquisition", "herg:minimize:1.5"],
+def test_selection_export_replays_yaml(tmp_path) -> None:
+    source = tmp_path / "selection.yaml"
+    source.write_text(
+        """schema_version: molecule-selection/1
+database:
+  database_id: enamine-real-v5a
+strategy:
+  type: sample
+portfolio:
+  limit: 10
+"""
     )
-    assert result.exit_code == 2
-    assert "KEEP_FRACTION" in result.output
+    result = runner.invoke(app, ["selection", "export", str(source), "--format", "json"])
+    assert result.exit_code == 0
+    assert '"schema_version": "molecule-selection/1"' in result.stdout
 
 
 def test_login_uses_browser_flow_and_saves_key(monkeypatch) -> None:
