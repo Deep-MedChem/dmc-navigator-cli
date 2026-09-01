@@ -1,4 +1,4 @@
-from dmc_navigator import DMCClient, Selection
+from deepmedchem import Client, Selection
 
 aspirin = "CC(=O)Oc1ccccc1C(=O)O"
 selection = (
@@ -18,6 +18,6 @@ selection.to_json()
 selection.to_yaml()
 replayed = Selection.model_validate(selection.to_dict())
 
-with DMCClient() as dmc:
+with Client() as dmc:
     validation = dmc.selections.validate(replayed)
     estimate = dmc.selections.estimate(validation.normalized_selection)

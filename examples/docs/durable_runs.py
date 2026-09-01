@@ -1,4 +1,4 @@
-from dmc_navigator import DMCClient, Run, Selection
+from deepmedchem import Client, Run, Selection
 
 template = (
     Selection.from_database("enamine-real-v5a", release="2026-08-29.1")
@@ -12,7 +12,7 @@ spec = Run.selection_batch(
     items={"lead-001": {"query": "CCO"}, "lead-002": {"query": "CCN"}},
 )
 
-with DMCClient() as dmc:
+with Client() as dmc:
     dmc.runs.estimate(spec)
     run = dmc.runs.create(spec, idempotency_key="lead-set-2026-08-v1")
     for event in dmc.runs.watch(run.id, after=run.last_event_sequence):

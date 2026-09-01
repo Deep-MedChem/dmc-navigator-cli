@@ -1,6 +1,6 @@
-from dmc_navigator import DMCClient
+from deepmedchem import Client
 
-with DMCClient() as dmc:
+with Client() as dmc:
     result = dmc.search("CCO", database="enamine-real-v5a", limit=20)
     shape_hits = dmc.search_cheese(
         "CCO", database="enamine-real-v5a", scorer="shape", limit=20
