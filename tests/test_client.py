@@ -67,6 +67,7 @@ def test_selection_builder_is_copy_on_write_and_round_trips() -> None:
         .require_pattern("alpha-amino-acid/v1", min_count=1)
         .where("rdkit.mol_wt", gt=250, units="Da")
         .limit(100)
+        .shortlist_multiplier(0)
         .max_per_scaffold(5)
         .include("properties", "constraint_evidence", "execution_plan")
     )
@@ -74,6 +75,7 @@ def test_selection_builder_is_copy_on_write_and_round_trips() -> None:
     payload = aspirin.to_dict()
     assert payload["constraints"]["properties"][0]["operator"] == "gt"
     assert payload["constraints"]["relationships"][0]["operator"] == "different"
+    assert payload["execution"]["shortlist_multiplier"] == 0
     assert Selection.model_validate(json.loads(aspirin.to_json())).to_dict() == payload
     loaded_yaml = __import__("yaml").safe_load(aspirin.to_yaml())
     assert Selection.model_validate(loaded_yaml).to_dict() == payload

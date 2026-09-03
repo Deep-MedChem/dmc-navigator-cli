@@ -9,7 +9,7 @@ description = "Thin remote client for DMC Navigator"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "deepmedchem[auth]>=0.1,<0.2",
+  "deepmedchem[auth]>=0.2.0b1,<0.3",
   "platformdirs>=4.2,<5",
   "pydantic>=2.8,<3",
   "PyYAML>=6,<7",
