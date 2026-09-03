@@ -35,6 +35,14 @@ def test_search_uses_shortlist_multiplier_instead_of_quality() -> None:
     assert "--scorer" not in option_names
     multiplier = next(param for param in search.params if "--shortlist-multiplier" in param.opts)
     assert multiplier.default == 10
+    assert multiplier.type.min == 0
+
+    cheese = get_command(app).commands["search-cheese"]
+    cheese_multiplier = next(
+        param for param in cheese.params if "--shortlist-multiplier" in param.opts
+    )
+    assert cheese_multiplier.default == 10
+    assert cheese_multiplier.type.min == 0
 
 
 def test_distinct_scientific_commands_exist() -> None:

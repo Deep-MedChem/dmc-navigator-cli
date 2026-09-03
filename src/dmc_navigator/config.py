@@ -5,13 +5,14 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-import keyring
+from deepmedchem.config import (
+    DEFAULT_API_URL,
+    DEFAULT_WEB_URL,
+    delete_api_key,
+    get_stored_api_key,
+    save_api_key,
+)
 from platformdirs import user_config_path
-
-SERVICE = "dmc-navigator"
-ACCOUNT = "platform-token"
-DEFAULT_API_URL = "https://cheese-new-api.deepmedchem.com"
-DEFAULT_WEB_URL = "https://cheese-new.deepmedchem.com"
 
 
 @dataclass(frozen=True)
@@ -46,15 +47,12 @@ def save_api_url(value: str) -> None:
 
 
 def get_token() -> str | None:
-    return os.environ.get("DMC_NAVIGATOR_TOKEN") or keyring.get_password(SERVICE, ACCOUNT)
+    return os.environ.get("DMC_NAVIGATOR_TOKEN") or get_stored_api_key()
 
 
 def save_token(token: str) -> None:
-    keyring.set_password(SERVICE, ACCOUNT, token)
+    save_api_key(token)
 
 
 def delete_token() -> None:
-    try:
-        keyring.delete_password(SERVICE, ACCOUNT)
-    except keyring.errors.PasswordDeleteError:
-        pass
+    delete_api_key(include_legacy=True)

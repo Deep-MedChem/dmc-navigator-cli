@@ -3,9 +3,8 @@ import json
 import runpy
 from pathlib import Path
 
+import deepmedchem
 import httpx
-
-import dmc_navigator
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "docs"
 
@@ -102,7 +101,7 @@ def _handler(request):
 
 
 def test_every_published_sdk_example_executes(monkeypatch):
-    real_client = dmc_navigator.DMCClient
+    real_client = deepmedchem.Client
 
     def docs_client(*args, **kwargs):
         kwargs["transport"] = httpx.MockTransport(_handler)
@@ -110,7 +109,7 @@ def test_every_published_sdk_example_executes(monkeypatch):
         return real_client(*args, **kwargs)
 
     monkeypatch.setenv("DMC_API_KEY", "docs-contract-key")
-    monkeypatch.setattr(dmc_navigator, "DMCClient", docs_client)
+    monkeypatch.setattr(deepmedchem, "Client", docs_client)
 
     executed = []
     for path in sorted(EXAMPLES.glob("*.py")):

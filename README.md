@@ -1,13 +1,16 @@
-# DMC Navigator Python client and CLI
+# DMC Navigator CLI
 
-The supported API-first client for DeepMedChem's hosted chemical-space platform. The package is
-chemistry-thin: it contains no RDKit, models, databases, or proprietary search implementation.
+The command-line application for DeepMedChem Navigator. It is built on the chemistry-thin
+[`deepmedchem`](https://github.com/Deep-MedChem/deepmedchem-python) platform SDK and contains no
+RDKit, models, databases, or proprietary search implementation.
 
 ```bash
 pipx install dmc-navigator
 navigator auth login
 navigator search --smiles 'CCO'
 navigator search-cheese --smiles 'CCO' --scorer shape
+navigator search --smiles 'CCO' --shortlist-multiplier 0
+navigator search-cheese --smiles 'CCO' --scorer shape --shortlist-multiplier 0
 navigator search-substructure --query 'C(=O)N1CCC1' --query-format smarts
 navigator sample --database enamine-real-v5a --count 100 --seed 12345
 ```
@@ -21,12 +24,12 @@ navigator run watch run_01K...
 navigator run results run_01K...
 ```
 
-The Python API exposes the same operations:
+For Python and notebook use, install and import the platform SDK directly:
 
 ```python
-from dmc_navigator import DMCClient
+from deepmedchem import Client
 
-with DMCClient(api_key="...") as dmc:
+with Client(api_key="...") as dmc:
     neighbors = dmc.search("CCO", database="enamine-real-v5a", limit=20)
     shape_hits = dmc.search_cheese(
         "CCO", database="enamine-real-v5a", scorer="shape", limit=20
@@ -37,11 +40,15 @@ with DMCClient(api_key="...") as dmc:
     molecules = dmc.sample(database="enamine-real-v5a", count=100, seed=12345)
 ```
 
+`shortlist_multiplier=0` is explicit no-over-fetch mode for Morgan and CHEESE search: exactly
+`limit` candidates are proposed and scored. It may return fewer valid unique products because no
+extra candidates are available to replace invalid assemblies or duplicates.
+
 Composable selections use a copy-on-write builder that emits the exact public
 `molecule-selection/1` document and performs no local chemistry:
 
 ```python
-from dmc_navigator import DMCClient, Run, Selection
+from deepmedchem import Client, Run, Selection
 
 selection = (
     Selection.from_database("enamine-real-v5a")
@@ -51,7 +58,7 @@ selection = (
     .include("properties", "constraint_evidence", "execution_plan")
 )
 
-with DMCClient(api_key="...") as dmc:
+with Client(api_key="...") as dmc:
     validation = dmc.selections.validate(selection)
     estimate = dmc.selections.estimate(validation.normalized_selection)
     if estimate.execution_tier == "synchronous":
@@ -63,8 +70,8 @@ with DMCClient(api_key="...") as dmc:
         )
 ```
 
-`AsyncDMCClient` provides matching async methods and async result/event iterators.
-`NavigatorClient` remains as a deprecated compatibility facade for the 0.3 release.
+`deepmedchem.AsyncClient` provides matching async methods and async result/event iterators.
+Imports from `dmc_navigator` remain as compatibility aliases for the 0.3 release.
 
 Authentication is read from the constructor, `DMC_API_KEY`, `DMC_NAVIGATOR_TOKEN`, or the OS
 credential store populated by `navigator auth login`. Credentials are never included in exception

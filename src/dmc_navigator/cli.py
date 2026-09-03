@@ -173,7 +173,7 @@ def search(
     input_file: Annotated[Path | None, typer.Option("--input", exists=True, dir_okay=False)] = None,
     database: Annotated[str, typer.Option()] = "enamine-real-v5a",
     limit: Annotated[int, typer.Option(min=1, max=200)] = 20,
-    shortlist_multiplier: Annotated[int, typer.Option(min=1, max=200)] = 10,
+    shortlist_multiplier: Annotated[int, typer.Option(min=0, max=200)] = 10,
     include_synthons: Annotated[bool, typer.Option()] = False,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ):
@@ -199,6 +199,7 @@ def search(
                 .ranked()
                 .maximize_similarity("rdkit.ecfp4_tanimoto", reference="query")
                 .limit(limit)
+                .shortlist_multiplier(shortlist_multiplier)
             )
             if include_synthons:
                 template = template.include("synthons")
@@ -226,6 +227,7 @@ def search_cheese(
     scorer: Annotated[str, typer.Option(help="shape or esp")] = "shape",
     database: Annotated[str, typer.Option()] = "enamine-real-v5a",
     limit: Annotated[int, typer.Option(min=1, max=200)] = 20,
+    shortlist_multiplier: Annotated[int, typer.Option(min=0, max=200)] = 10,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ):
     if scorer not in {"shape", "esp"}:
@@ -233,7 +235,11 @@ def search_cheese(
     with client() as api:
         emit(
             api.search_cheese(
-                smiles, database=database, scorer=scorer, limit=limit
+                smiles,
+                database=database,
+                scorer=scorer,
+                limit=limit,
+                shortlist_multiplier=shortlist_multiplier,
             ),
             json_output,
         )

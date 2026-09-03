@@ -25,7 +25,7 @@ def test_browser_login_polls_until_key_is_approved(monkeypatch) -> None:
             return httpx.Response(202, json={"status": "pending"})
         return httpx.Response(200, json={"api_key": "shared-cheese-key"})
 
-    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    monkeypatch.setattr("deepmedchem.auth.open_browser_safely", lambda url: opened.append(url))
     token, code, url = browser_login(
         "https://cheese.test", transport=httpx.MockTransport(handler), sleep=lambda _: None
     )
