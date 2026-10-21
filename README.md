@@ -69,3 +69,12 @@ with DMCClient(api_key="...") as dmc:
 Authentication is read from the constructor, `DMC_API_KEY`, `DMC_NAVIGATOR_TOKEN`, or the OS
 credential store populated by `navigator auth login`. Credentials are never included in exception
 messages. The canonical documentation is at <https://docs.deepmedchem.com/docs/python/quickstart>.
+
+### Exact molecular retrieval
+
+Morgan searches use the shared platform engine, including inverse-assembly
+identity recovery enabled by default in core 0.4.3. No client flag or larger
+result limit is required. Synchronous and asynchronous clients preserve server
+ordering, including exact isomeric identity ahead of equal-score fingerprint
+collisions. Existing filters still apply; a bounded search miss is not proof
+that a molecule is absent. Several supplier routes may produce the same molecule.
